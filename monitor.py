@@ -3,9 +3,9 @@
 at City Centre Alexandria on a given date, and alert your phone.
 
 Usage:
-    python functions/monitor.py                 # loop forever (default: every 60s)
-    python functions/monitor.py --once          # single check (for cron / GitHub Actions)
-    python functions/monitor.py --test-notify   # send a test alert on every configured channel
+    python monitor.py                 # loop forever (default: every 60s)
+    python monitor.py --once          # single check (for cron / GitHub Actions)
+    python monitor.py --test-notify   # send a test alert on every configured channel
 """
 from __future__ import annotations
 
