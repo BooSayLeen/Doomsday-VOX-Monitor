@@ -1,72 +1,49 @@
 # Doomsday VOX Monitor
 
-Watches VOX Cinemas Egypt for **Avengers: Doomsday — Infinity Vision** at
-**City Centre Alexandria** on **29 Dec 2026**, and alerts your phone the moment
-showtimes appear. Runs free on **Cloudflare Workers**, checking every minute (no card needed).
+Watches VOX Cinemas Egypt for **Avengers: Doomsday (Infinity Vision)** at
+**City Centre Alexandria** on **29 Dec 2026**, and alerts your phone when tickets drop.
+It runs in the cloud on GitHub Actions, so your laptop can be off.
 
-## How it detects tickets
+## How it works
 
-Every minute it fetches:
+Every 5 minutes GitHub runs `monitor.py`, which fetches:
 
-1. the cinema's showtimes page for the target date (`/showtimes?c=city-centre-alexandria&d=20261229`)
-2. the movie page (`/movies/avengers-doomsday`)
+```
+https://egy.voxcinemas.com/showtimes?c=city-centre-alexandria&m=avengers-doomsday-infinity-vision&d=20261229
+```
+
+VOX lists Infinity Vision as its own movie (`avengers-doomsday-infinity-vision`).
+That page has `/booking/0032-…` links (0032 = City Centre Alexandria) only once
+that date is on sale. VOX hangs on non-browser requests, so pages are fetched with
+`curl_cffi` impersonating Chrome, the same trick as the old Spider-Man script.
 
 | Signal | Alert |
 |---|---|
-| The cinema's 29 Dec page mentions both Doomsday and Infinity Vision | **URGENT**, once |
-| Doomsday + "Infinity Vision" + showtimes in the same block | **URGENT**, repeated `ALERT_REPEATS` times (one per minute), then it stops |
-| 29 Dec appears on the movie page's date list | **URGENT**, once |
-| Relevant page content changed at all | normal priority (safety net if VOX's layout differs from what the parser expects) |
-| 20 checks fail in a row (blocked or site down) | normal priority, once |
+| Infinity Vision booking links for 29 Dec appear | **URGENT** on every channel, repeated `ALERT_REPEATS` (3) runs, then stops |
+| Regular Doomsday becomes bookable for 29 Dec | **URGENT**, once (early warning) |
+| 10 checks fail in a row | normal priority, once |
 
-## Deploy to Cloudflare (free, ~10 minutes)
+## Setup
 
-You need a free [Cloudflare account](https://dash.cloudflare.com/sign-up) and Node.js 18+.
+See the step-by-step guide in the conversation, or in short:
 
-1. **Pick alert channels.** The easiest is ntfy: install the **ntfy** app, tap **+**, and
-   subscribe to a long random topic name such as `doomsday-alerts-k38fj2`. On Android,
-   allow ntfy's "Max priority" notifications to override Do Not Disturb.
-2. **Fill in secrets:**
-   ```bash
-   cd worker
-   cp secrets.example.json secrets.json   # set ADMIN_KEY, NTFY_TOPIC, and any other channels
-   ```
-3. **Deploy:**
-   ```bash
-   npm install
-   npx wrangler login
-   npx wrangler deploy
-   npx wrangler secret bulk secrets.json
-   ```
-   The first deploy creates the KV namespace that stores state. If your Wrangler
-   version asks for an `id`, run `npx wrangler kv namespace create STATE` and add
-   `id = "..."` under `[[kv_namespaces]]` in `wrangler.toml`.
-4. **Test it.** Use the URL that `wrangler deploy` printed:
-   - `https://doomsday-vox-monitor.<you>.workers.dev/test-notify?key=ADMIN_KEY` sends a test alert to your phone
-   - `.../check?key=ADMIN_KEY` runs a live check without alerting. Look at `errors`:
-     `HTTP 403 (blocked)` means VOX is blocking Cloudflare, and `HTTP 404` means the URL guess is wrong.
-   - `.../?key=ADMIN_KEY` shows the saved state. `.../reset?key=ADMIN_KEY` re-arms the alerts.
-5. **Watch the logs:** Cloudflare dashboard → Workers → `doomsday-vox-monitor` → Logs,
-   or `npx wrangler tail`. You should see `not yet: ...` every minute.
+1. Make the repo **public** (Settings → General → Danger Zone). Private repos get only
+   2,000 free Actions minutes a month, which runs out in about a week at this pace.
+   Secrets stay private either way.
+2. Install the **ntfy** app and subscribe to a long random topic name.
+3. In the repo, go to **Settings → Secrets and variables → Actions → New repository secret**
+   and add `NTFY_TOPIC` (plus any other channels, listed in `.env.example`).
+4. Go to **Actions → VOX ticket monitor → Run workflow**, tick *Send a test alert*,
+   and run it. Your phone should buzz.
+5. Done. It runs every 5 minutes by itself.
 
-To change what it watches (date, cinema, URLs), edit `[vars]` in `worker/wrangler.toml`
-and run `npx wrangler deploy` again. If VOX's real page URLs differ, open the page
-in your browser and copy its address into `SHOWTIMES_URL` / `MOVIE_URL`.
+To watch a different date, add a repository **variable** (not a secret) `TARGET_DATE`, e.g. `2026-12-30`.
+To re-arm after it has alerted, delete the `vox-state-…` caches under **Actions → Caches**.
 
-**Channels:** ntfy (with `NTFY_EMAIL` it forwards each alert to your email too),
-Telegram, WhatsApp (CallMeBot), Pushover (emergency alerts repeat until you tap them),
-Twilio SMS **and a phone call**, Discord. Configure as many as you like; they all fire.
-
-**Free-plan limits:** cron every minute is free. State writes are skipped unless something
-changed, which keeps KV under its 1,000 writes/day. Parsing is tuned for the 10 ms CPU
-limit, and the urgent "likely live" alert is sent and saved *before* the heavy parse,
-so a CPU-limit kill can't swallow it.
-
-## Run locally instead (Python)
+## Run locally
 
 ```bash
 pip install -r requirements.txt
-pip install playwright && playwright install chromium   # optional fallback if VOX blocks plain requests
 cp .env.example .env    # fill in at least one channel
 python monitor.py --test-notify
 python monitor.py
@@ -75,6 +52,5 @@ python monitor.py
 ## Tests
 
 ```bash
-cd worker && npm test
 pip install pytest && python -m pytest -q
 ```
