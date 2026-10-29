@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """VOX Cinemas ticket monitor: Avengers: Doomsday (Infinity Vision),
-City Centre Alexandria, 29 Dec 2026. Alerts your phone when tickets drop.
+City Centre Alexandria, 26 Dec 2026. Alerts your phone when tickets drop.
 
 Same detection as the old Spider-Man script: the cinema+movie+date filtered
 showtimes page lists /booking/0032-NNNNNN links only once that date is on sale.
@@ -54,7 +54,7 @@ MOVIE_SLUG = env("MOVIE_SLUG", "avengers-doomsday-infinity-vision")
 MOVIE_NAME = env("MOVIE_NAME", "Avengers: Doomsday (Infinity Vision)")
 # The regular version, watched as an early warning that the date is opening up.
 EARLY_SLUG = env("EARLY_WARNING_SLUG", "avengers-doomsday")
-TARGET_DATE = datetime.strptime(env("TARGET_DATE", "2026-12-29"), "%Y-%m-%d").date()
+TARGET_DATE = datetime.strptime(env("TARGET_DATE", "2026-12-26"), "%Y-%m-%d").date()
 INTERVAL = int(env("CHECK_INTERVAL_SECONDS", "60"))
 ALERT_REPEATS = int(env("ALERT_REPEATS", "3"))
 STATE_FILE = Path(env("STATE_FILE", str(ROOT / "state.json")))

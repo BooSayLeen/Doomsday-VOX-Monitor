@@ -20,7 +20,7 @@ def run(pages, state, n=1):
 
 def test_urls():
     assert monitor.POLL_URL.endswith(
-        "/showtimes?c=city-centre-alexandria&m=avengers-doomsday-infinity-vision&d=20261229")
+        "/showtimes?c=city-centre-alexandria&m=avengers-doomsday-infinity-vision&d=20261226")
 
 
 def test_bookings_only_count_this_cinema():
