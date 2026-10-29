@@ -40,6 +40,19 @@ See the step-by-step guide in the conversation, or in short:
 To watch a different date, add a repository **variable** (not a secret) `TARGET_DATE`, e.g. `2026-12-27`.
 To re-arm after it has alerted, delete the `vox-state-…` caches under **Actions → Caches**.
 
+## Backup trigger (cron-job.org)
+
+GitHub's own schedule can start late or skip runs, so a free external timer also
+starts the workflow every 2 minutes through the GitHub API:
+
+- **Token:** a fine-grained personal access token limited to this repo, with
+  *Actions: Read and write* permission.
+- **cron-job.org job:** `POST https://api.github.com/repos/BooSayLeen/Doomsday-VOX-Monitor/actions/workflows/monitor.yml/dispatches`
+  with headers `Authorization: Bearer <token>`, `Accept: application/vnd.github+json`,
+  and body `{"ref":"claude/fervent-darwin-5pv8zh"}`. GitHub answers `204` on success.
+
+If both triggers fire together, the workflow's concurrency group runs them one after the other.
+
 ## Run locally
 
 ```bash
