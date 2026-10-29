@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 os.environ.setdefault("TARGET_DATE", "2026-12-29")
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "functions"))
 import monitor  # noqa: E402
 
 LIVE = """

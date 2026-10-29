@@ -20,29 +20,44 @@ Every 60s it fetches:
 
 If VOX blocks plain HTTP requests, it falls back to a headless Chromium (Playwright).
 
-## Setup (5 minutes)
+## Deploy to Firebase (runs in the cloud every minute)
+
+Needs the **Blaze** plan (a card on file). This usage stays inside the free tier:
+about 44k function runs a month against 2M free, and 1 Cloud Scheduler job against 3 free.
+
+1. In the [Firebase console](https://console.firebase.google.com): create a project,
+   upgrade it to Blaze, then **Build → Firestore Database → Create database**.
+2. Configure alerts:
+   ```bash
+   cp functions/.env.example functions/.env    # fill in ADMIN_KEY + at least one channel
+   ```
+3. Deploy (needs Node.js and Python 3.12):
+   ```bash
+   npm install -g firebase-tools
+   firebase login
+   python3.12 -m venv functions/venv
+   functions/venv/bin/pip install -r functions/requirements.txt
+   firebase deploy --only functions --project YOUR_PROJECT_ID
+   ```
+4. Test your phone alerts. Open the `test_notify` URL printed by the deploy:
+   `https://europe-west1-YOUR_PROJECT_ID.cloudfunctions.net/test_notify?key=YOUR_ADMIN_KEY`
+5. Watch it run: Firebase console → Functions → `vox_monitor` → Logs. You should see
+   `not yet: ...` every minute. Repeated `fetch ... failed` lines mean VOX is
+   blocking Google's servers. You'll also get an alert after 20 failures in a row.
+
+To change settings later, edit `functions/.env` and run `firebase deploy` again.
+Once tickets are found and the alerts have been sent, it stops alerting. To re-arm it,
+delete the `vox_monitor/state` document in Firestore.
+
+## Run locally instead
 
 ```bash
 pip install -r requirements.txt
 pip install playwright && playwright install chromium   # optional fallback
-cp .env.example .env    # fill in at least one channel
-python monitor.py --test-notify
-python monitor.py
+cp functions/.env.example functions/.env
+python functions/monitor.py --test-notify
+python functions/monitor.py
 ```
-
-**Channels:** ntfy (free, easiest; set the channel to max priority in the app
-so it can sound through Do Not Disturb), Telegram, WhatsApp (CallMeBot),
-Pushover (emergency alerts repeat until you tap them), Twilio SMS **and a
-phone call**, Discord, email. Configure as many as you like; they all fire.
-
-## Where to run it
-
-- **Best:** an always-on PC, laptop, or Raspberry Pi in Egypt, checking every 60s.
-- **Android phone:** install Termux, `pkg install python`, and run it there (skip Playwright).
-- **GitHub Actions** (`.github/workflows/monitor.yml`): no machine needed, but it
-  checks at most every 5 minutes, scheduled runs can be delayed, and VOX may block
-  datacenter IPs. Add your channel credentials as repo secrets, then enable Actions.
-  Use it as a backup to a local run.
 
 ## Tests
 

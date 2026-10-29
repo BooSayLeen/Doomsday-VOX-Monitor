@@ -3,9 +3,9 @@
 at City Centre Alexandria on a given date, and alert your phone.
 
 Usage:
-    python monitor.py                 # loop forever (default: every 60s)
-    python monitor.py --once          # single check (for cron / GitHub Actions)
-    python monitor.py --test-notify   # send a test alert on every configured channel
+    python functions/monitor.py                 # loop forever (default: every 60s)
+    python functions/monitor.py --once          # single check (for cron / GitHub Actions)
+    python functions/monitor.py --test-notify   # send a test alert on every configured channel
 """
 from __future__ import annotations
 
@@ -113,6 +113,10 @@ def fetch(url: str) -> str:
     else:
         status, html = fetch_requests(url)
         if FETCH_MODE == "auto" and looks_blocked(status, html):
+            try:
+                import playwright  # noqa: F401
+            except ImportError:
+                raise RuntimeError(f"blocked (HTTP {status}) and Playwright isn't installed")
             log(f"requests got {status}/blocked for {url}, retrying with headless browser")
             status, html = fetch_browser(url)
     if status >= 400:
@@ -214,7 +218,8 @@ def notify(title: str, body: str, url: str, urgent: bool = True) -> list[str]:
                                        "Priority": "5" if urgent else "3",
                                        "Tags": "rotating_light,movie_camera",
                                        "Click": url,
-                                       "Actions": f"view, Book now, {url}"})
+                                       "Actions": f"view, Book now, {url}",
+                                       **({"Email": env("NTFY_EMAIL")} if env("NTFY_EMAIL") else {})})
             r.raise_for_status()
         attempt("ntfy", ntfy)
 
@@ -296,6 +301,8 @@ def save_state(state: dict) -> None:
 
 def check(state: dict) -> bool:
     """One check cycle. Returns True once tickets are confirmed and alerts are done."""
+    if state.get("done"):
+        return True
     label = f"{MOVIE_KEYWORD} ({EXPERIENCE}) @ {CINEMA_NAME} on {TARGET_DATE:%a %d %b %Y}"
     pages = {"showtimes": SHOWTIMES_URL, "movie": MOVIE_URL}
     times: list[str] = []
@@ -335,7 +342,8 @@ def check(state: dict) -> bool:
         log(f"TICKETS FOUND: {times}")
         notify("DOOMSDAY TICKETS LIVE!",
                f"{label}\nShowtimes: {', '.join(times)}\nBook NOW!", BOOKING_URL, urgent=True)
-        return state["alerts"] >= ALERT_REPEATS
+        state["done"] = state["alerts"] >= ALERT_REPEATS
+        return state["done"]
     log(f"not yet: {label}")
     return False
 
