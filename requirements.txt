@@ -1,0 +1,4 @@
+requests>=2.31
+beautifulsoup4>=4.12
+# Optional: used automatically if VOX blocks plain requests.
+# pip install playwright && playwright install chromium
